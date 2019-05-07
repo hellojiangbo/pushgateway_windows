@@ -1,4 +1,10 @@
-功能: 将node_exporter、curl、ping丢包率， 信息推送给pushgateway; 
+具体功能: 
+将node_exporter、curl、ping丢包率等信息推送给pushgateway; 
+1. 收集客户端网卡信息.
+2. 获取客户端公网IP
+3. 获取ping延时和丢包率
+4. 推送wmi_exporter 9182端口信息到pushgateway
+5. 获取打开网站的速度
 
 前提必须安装python3、node_exporter
 1. node_exporter、curl、ping、pushgateway域名和端口可以自定义，请参考getinfo.cfg 。
