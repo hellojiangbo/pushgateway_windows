@@ -1,5 +1,6 @@
 #!/usr/bin/python
 # -*- coding=gbk -*-
+# -*- conding: UTF-8 -*-
 
 from requests import get,post
 from os import name,getenv,system
@@ -13,6 +14,13 @@ import traceback
 from urllib.parse import urlparse
 import subprocess 
 import re
+
+
+
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
 # prometheus client
 import prometheus_client
 from prometheus_client import Counter
@@ -20,10 +28,6 @@ from prometheus_client import Gauge
 from prometheus_client.core import CollectorRegistry
 import psutil
 
-try:
-    from StringIO import StringIO
-except ImportError:
-    from io import StringIO
 
 def hostname():
     sys=name
@@ -38,6 +42,13 @@ def hostname():
 
 config = ConfigParser()
 config.read('getinfo.cfg')
+# get localhost ip
+mylocalhost=config['local']["ip"]
+print(mylocalhost)
+mylocalport=config['local']["port"]
+print(mylocalport)
+# example localurl=http://127.0.0.1:9182/metrics
+localurl='http://' + mylocalhost + ':' + mylocalport + '/metrics'
 
 # get job name and instance name
 pmh=config['jobname']["suffix"]
@@ -136,7 +147,7 @@ def m_web():
     client_curl = Gauge("http_total_time",name,["monitorurl"],registry=REGISTRY)
     client_curl.labels(inputurl).set(http_total_time * 1000)
 
-    pushurl_web = pushurl + '_' + inputdomain
+    pushurl_web = pushurl='http://' + pushhostinfo + '/metrics/job/' + job_name + '/instance/' + instance_name + '_' + inputdomain
     post(pushurl_web,data=prometheus_client.generate_latest(REGISTRY),timeout=60,auth=(username,password))
     print('push to url: ',  pushurl_web)
     print('pushurl_web finished!')
@@ -153,13 +164,11 @@ def m_ping():
         #pLose.findall(r)[-3]
         print('source info: ',resStr)
 
-
         try:
 
           reLose = re.compile('\(\d{1,6}% 丢失\)')
           pLoseNum=str(reLose.findall(resStr)).split('%')[0].replace('[\'(','')
           print('Lose Packet: ',pLoseNum)
-
 
         except:
           traceback.print_exc()
@@ -206,23 +215,92 @@ def m_ping():
 
         client_curl = Gauge("ping_avg",name,["ping","ipv4","ipv6"],registry=REGISTRY)
         client_curl.labels(ping_addr,ipv4,ipv6).set(pAvgNum)
-        pushurl_addr = pushurl + '_ping' + value_ping
+        pushurl_addr = pushurl='http://' + pushhostinfo + '/metrics/job/' + job_name + '/instance/' + instance_name + '_ping' + value_ping
         post(pushurl_addr,data=prometheus_client.generate_latest(REGISTRY),timeout=60,auth=(username,password))
         print('push to ping : ',  pushurl_addr)
         print('pushurl_addr finished!')
         print()
 
+def getIp():
+        try:
+          print('_____________  start  get ip  ____________')
+          sleep(3)
+          req = get("http://txt.go.sohu.com/ip/soip")
+          ip = re.findall(r'\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}',req.text)
+          wanIp = ip[0]
+          publicIp = 'publicIp'
+          print ("pubilc IP: ",ip[0])
+          REGISTRY = CollectorRegistry(auto_describe=False)
+          client_curl = Gauge("wanIp",name,["wanIp"],registry=REGISTRY)
+          client_curl.labels(wanIp).set(0)
+          print('_____________________________________________')
+          pushurl_addr = pushurl='http://' + pushhostinfo + '/metrics/job/' + job_name + '/instance/' + instance_name
+          post(pushurl_addr,data=prometheus_client.generate_latest(REGISTRY),timeout=60,auth=(username,password))
+
+          print('wanIp url : ',  pushurl_addr)
+          print('______________  end get ip _______________')
+        except:
+          traceback.print_exc()
+          wanIp = '0.0.0.0'
+          print('wanIP: ',wanIp)
+          REGISTRY = CollectorRegistry(auto_describe=False)
+          client_curl = Gauge("wanIp",name,["wanIp"],registry=REGISTRY)
+          client_curl.labels(wanIp).set(0)
+          pushurl_addr = pushurl='http://' + pushhostinfo + '/metrics/job/' + job_name + '/instance/' + instance_name
+          post(pushurl_addr,data=prometheus_client.generate_latest(REGISTRY),timeout=60,auth=(username,password))
+
+          print ('__________ getIp except_____________________')
+def getNetInfo():
+        try:
+          p = subprocess.Popen(["ipconfig", "/all"], stdout=subprocess.PIPE).communicate()[0].decode("gbk")
+          pp = p.replace(' ','')
+          print('process ipconfig all output : ',pp)
+          ipInfo = pp
+          print('ipInfo: ',ipInfo)
+          REGISTRY = CollectorRegistry(auto_describe=False)
+          client_curl = Gauge("localNetInfo",name,["localNetInfo"],registry=REGISTRY)
+          client_curl.labels(ipInfo).set(0)
+          pushurl_addr = pushurl='http://' + pushhostinfo + '/metrics/job/' + job_name + '/instance/' + instance_name
+          post(pushurl_addr,data=prometheus_client.generate_latest(REGISTRY),timeout=60,auth=(username,password))
+        except:
+          ipInfo = 'get error ... ... !!! !!!'
+          traceback.print_exc()
+          print (netInfo)
+          REGISTRY = CollectorRegistry(auto_describe=False)
+          client_curl = Gauge("localNetInfo",name,["localNetInfo"],registry=REGISTRY)
+          client_curl.labels(ipInfo).set(0)
+          pushurl_addr = pushurl='http://' + pushhostinfo + '/metrics/job/' + job_name + '/instance/' + instance_name
+          post(pushurl_addr,data=prometheus_client.generate_latest(REGISTRY),timeout=60,auth=(username,password))
+
+def run():
+      try:
+        #local 127.0.0.1:9182/metrics
+        r=get(localurl)
+        print(r.status_code)
+        content=r.text.replace('# TYPE process_start_time_seconds counter','# TYPE process_start_time_seconds gauge')
+        post(pushurl,data=content,timeout=60,auth=(username,password))
+
+        print('push to url:',pushurl)
+        print('push finished!')
+        print()
+        sleep(1)
+      except:
+        sleep(1)
+        print('post Error ... ... sleep 3s ... ... run post pushurl ')
+
+
 if __name__ == '__main__':
-  sleep(30)
+  sleep(300)
   while True:
     try:
+      getIp()
+      getNetInfo()
+      run()
       m_web()
       m_ping()
-      sleep(30)
+
+      sleep(600)
     except:
       traceback.print_exc()
       print('may any error.. .. ..')
-      sleep(30)
-    else:
-      pass
-      print('end')
+      sleep(300)
