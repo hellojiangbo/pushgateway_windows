@@ -1,3 +1,7 @@
+测试环境:
+操作系统: windows 7 SP1
+执行方法: exe  （pyinstaller -F -w pushgateway_windows.py）
+
 具体功能: 
 将node_exporter、curl、ping丢包率等信息推送给pushgateway; 
 1. 收集客户端网卡信息.
