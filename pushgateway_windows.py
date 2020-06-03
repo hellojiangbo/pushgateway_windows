@@ -52,7 +52,7 @@ localurl='http://' + mylocalhost + ':' + mylocalport + '/metrics'
 
 # get job name and instance name
 pmh=config['jobname']["suffix"]
-job_name= hostname() + pmh
+job_name= hostname() + company
 instance_name= hostname()
 print( 'instance name: ', instance_name )
 
